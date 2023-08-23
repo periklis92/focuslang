@@ -48,11 +48,11 @@
 
 ### Simple Path
 
-[Identifier](#identifier)(`.`[Identifier](#identifier))`*`
+[Identifier](#identifier)(`.`[Identifier](#identifier))<sup>*</sup>
 
 ### Let
 
-`let` [Identifier](#identifier) (: [Type](#let-type))<sup>?</sup>
+`let` [Identifier](#identifier) (: [Type](#let-type))<sup>?</sup> (`=` [Block](#block))<sup>?</sup>
 
 #### Let Type
 
@@ -67,6 +67,6 @@
 
 (  
     `_`  
-    | `[a-z]`  
-    | `[A-Z]`  
-)`*`
+    | [`a`-`z`]  
+    | [`A`-`Z`]  
+)<sup>*</sup>
