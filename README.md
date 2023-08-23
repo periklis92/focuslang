@@ -1,72 +1,21 @@
-# Syntax
+# focus-lang
+## Contents:
+ - [Syntax](Syntax.md)
+ - [Examples](#examples)
+
+## Examples:
+```ocaml
+    type Point = {x: int, y: int}
+
+    let distance_between_points a b: (Point -> Point -> int) = 
+        let x = Std.Math.pow 2 (a.x - b.x)
+        let y = Std.Math.pow 2 (a.y - b.y)
+        Std.Math.sqrt (x + y)
 
 
-### Statement:
-
- [Item](#item)  
-| [Let](#let)  
-| [Expression](#expression)  
-    
-
-### Item
-
-[Visibility](#visibility)<sup>?</sup>  
-(  
-    [Module](#module)  
-    | [Use](#use)    
-    | [Type Alias](#type-alias)  
-    | [Struct](#struct)  
-)
-
-### Visibility
-
-`pub` `module`<sup>?</sup>
-
-### Module
-
-`module` [Identifier](#identifier)
-
-### Use
-
-`use` [Simple Path](#simple-path)
-
-### Type Alias
-
-`type` [Identifier](#identifier) (`=` [Simple Path](#simple-path))<sup>?</sup>
-
-### Struct
-
-`type` [Identifier](#identifier) `=` `{` ([Struct Fields](#struct-fields))<sup>?</sup> `}`
-
-#### Struct Fields
-
-[Struct Field](#struct-field)(, [Struct Field](#struct-field))`,`<sup>?</sup>
-
-#### Struct Field
-
-[Visibility](#visibility)<sup>?</sup>  [Identifier](#identifier)`:` [Simple Path](#simple-path) 
-
-### Simple Path
-
-[Identifier](#identifier)(`.`[Identifier](#identifier))<sup>*</sup>
-
-### Let
-
-`let` [Identifier](#identifier) (: [Type](#let-type))<sup>?</sup> (`=` [Block](#block))<sup>?</sup>
-
-#### Let Type
-
-[Simple Path](#simple-path)  
-| [Function Type](#function-type)
-
-#### Function Type
-
-`(` [Simple Path](#simple-path) `->` [Simple Path](#simple-path) (`->` [Simple Path](#simple-path))<sup>*</sup> `)`
-
-### Identifier
-
-(  
-    `_`  
-    | [`a`-`z`]  
-    | [`A`-`Z`]  
-)<sup>*</sup>
+    let main = 
+        let pointA = Point {x: 0, y: 0}
+        let pointB = Point {x: 5, y: 6}
+        let length = distance_between_points pointA pointB
+        print "The length between the two points is {length}."
+```
