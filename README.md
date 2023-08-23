@@ -20,7 +20,7 @@
 
 ### Visibility
 
-`pub module`<sup>?</sup>
+`pub` `module`<sup>?</sup>
 
 ### Module
 
