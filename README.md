@@ -1,11 +1,11 @@
-## Statements
+# Syntax
 
 
 ### Statement:
 
  [Item](#item)  
-| [Let](#Item)  
-| [Expression](#Item)  
+| [Let](#let)  
+| [Expression](#expression)  
     
 
 ### Item
@@ -14,7 +14,7 @@
 (  
     [Module](#module)  
     | [Use](#use)    
-    | [TypeAlias](#type-alias)  
+    | [Type Alias](#type-alias)  
     | [Struct](#struct)  
 )
 
@@ -49,6 +49,19 @@
 ### Simple Path
 
 [Identifier](#identifier)(`.`[Identifier](#identifier))`*`
+
+### Let
+
+`let` [Identifier](#identifier) (: [Type](#let-type))<sup>?</sup>
+
+#### Let Type
+
+[Simple Path](#simple-path)  
+| [Function Type](#function-type)
+
+#### Function Type
+
+`(` [Simple Path](#simple-path) `->` [Simple Path](#simple-path) (`->` [Simple Path](#simple-path))<sup>*</sup> `)`
 
 ### Identifier
 
