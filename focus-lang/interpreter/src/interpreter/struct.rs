@@ -1,4 +1,4 @@
-use std::{collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use parser::stmt::Struct;
 
@@ -54,9 +54,9 @@ impl Interpreter {
             return Err(format!("Unknown field(s): {fields}"));
         }
 
-        Ok(Value::Object(Rc::new(Object {
+        Ok(Value::Object(Rc::new(RefCell::new(Object {
             values,
             type_id: *type_id,
-        })))
+        }))))
     }
 }
