@@ -1,4 +1,4 @@
-<div class="flex-shrink-0 p-3" style="width: 210px;" />
+<div class="flex-shrink-0 p-3" style="width: 12rem;" />
 
 <div class="divider bg-primary" />
 
