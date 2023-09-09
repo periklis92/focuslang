@@ -1,8 +1,10 @@
 <script lang="ts">
-	export let source: string | undefined = undefined;
+	export let source: string | undefined = `type Point = {x: int, y: int}
+
+	Point {x: 1, y: 2}`;
 </script>
 
-<div class="d-flex text-bg-dark w-100 px-1" style="height: 85%;">
+<div class="d-flex text-bg-dark w-100 px-1 pt-2" style="height: 85%;">
 	<div
 		contenteditable="true"
 		class="code-editor"

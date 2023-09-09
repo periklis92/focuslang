@@ -7,7 +7,7 @@
 	export let data: PageData;
 
 	let source: string;
-	let output: string | undefined;
+	let output: string[];
 
 	function runCode() {
 		if (!source) {
@@ -18,12 +18,14 @@
 			console.debug('Executing code...');
 			let result = data.interpreter.interpret_str_web(source);
 			console.log(result);
-			output += JSON.stringify(result, (_, v) => (typeof v === 'bigint' ? Number(v) : v)) + '\n';
+			const log = JSON.stringify(result, (_, v) => (typeof v === 'bigint' ? Number(v) : v));
+			output.push(`${new Date().toLocaleTimeString()}: ${log}`);
 			console.log(result);
 			console.debug('Code executed successfully.');
 		} catch (err: any) {
-			output += err + '\n';
+			output.push(`${new Date().toLocaleTimeString()}: ${err}`);
 		}
+		output = output;
 	}
 </script>
 
@@ -34,7 +36,7 @@
 	<SideBar on:run={runCode} on:clear={() => (source = '')} />
 
 	<div class="d-flex flex-column w-100">
-		<Nav />
+		<Nav on:run={runCode} />
 		<CodeEditor bind:source />
 
 		<Output bind:output />
