@@ -1,4 +1,9 @@
 [workspace]
-members = ["scanner", "parser", "interpreter", "repl"]
+members = [
+    "focus-lang/interpreter",
+    "focus-lang/parser",
+    "focus-lang/repl",
+    "focus-lang/scanner",
+]
 
 resolver = "2"
