@@ -28,7 +28,7 @@ impl Interpreter {
             Value::Object(object) => {
                 let ty = self
                     .type_registry
-                    .get_type_from_id(object.type_id)
+                    .get_type_from_id(object.borrow().type_id)
                     .ok_or("Type of object not found.".to_string())?;
 
                 let fields = ty
@@ -42,7 +42,10 @@ impl Interpreter {
                         &js_object,
                         &f.ident.clone().into(),
                         &self.to_js_value(
-                            object.get_value(i).expect("Value not found in object."),
+                            object
+                                .borrow()
+                                .get_value(i)
+                                .expect("Value not found in object."),
                         )?,
                     )
                     .or(Err("Unable to set property.".to_string()))?;
