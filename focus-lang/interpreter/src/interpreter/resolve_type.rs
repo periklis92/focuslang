@@ -1,6 +1,7 @@
 use parser::stmt::{Expression, Literal, Stmt};
 
 use crate::{
+    object::ValueRef,
     r#type::{FunctionType, PrimitiveType, Type, TypeId, TypeLayout},
     Interpreter,
 };
@@ -39,12 +40,14 @@ impl Interpreter {
     ) -> Result<TypeId, String> {
         let type_id = match expr {
             Expression::Literal(literal) => self.resolve_literal_type(literal)?,
-            Expression::Path(path) => self
-                .context
-                .borrow()
-                .find_local(path)
-                .map(|local| local.ty)
-                .ok_or(format!("Unable to find name {path}."))?,
+            Expression::Path(path) => {
+                let value_ref = self.resolve_path(path.clone())?;
+
+                match value_ref {
+                    ValueRef::StackRef { type_id, .. } => type_id,
+                    ValueRef::ObjectRef { type_id, .. } => type_id,
+                }
+            }
             Expression::Operation(operation) => {
                 let lhs_type_id = self.resolve_expr_type(&operation.lhs, expected_type)?;
                 let rhs_type_id = self.resolve_expr_type(&operation.rhs, expected_type)?;
