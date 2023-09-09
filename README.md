@@ -1,4 +1,7 @@
 # focus-lang
+
+Try the project in the [Playground](https://periklis92.github.io/focuslang).
+
 ## Contents:
  - [Syntax Rules](SyntaxRules.md)
  - Concepts:
