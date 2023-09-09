@@ -3,7 +3,7 @@
 /.vs
 .DS_Store
 node_modules
-/build
+build
 /playground/.svelte-kit
 /package
 .env
