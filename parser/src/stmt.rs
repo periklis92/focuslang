@@ -5,34 +5,34 @@ use crate::{
     Type,
 };
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct StmtDetails {
     pub file: Option<String>,
     pub defined_at: std::ops::Range<usize>,
     pub stmt: Stmt,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Visibility {
     Private,
     Module,
     Public,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Stmt {
     Item(ItemStmt),
     Let(LetStmt),
     Expr(Expression),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ItemStmt {
     pub item: Item,
     pub visibility: Visibility,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Item {
     Alias(AliasItem),
     Struct(StructItem),
@@ -40,26 +40,26 @@ pub enum Item {
     UseDeclaration(String),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct AliasItem {
     pub ident: String,
     pub path: Option<String>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct StructItem {
     pub ident: String,
     pub fields: Vec<StructItemField>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct StructItemField {
     pub ident: String,
     pub visibility: Visibility,
     pub ty: Type,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct LetStmt {
     pub ident: String,
     pub visibility: Option<Visibility>,
@@ -68,7 +68,7 @@ pub struct LetStmt {
     pub ty: Option<Type>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
     Literal(Literal),
     Path(String),
@@ -82,6 +82,7 @@ pub enum Expression {
     Match(Match),
     For(For),
     Block(Vec<Stmt>),
+    Closure(Closure),
 }
 
 impl Expression {
@@ -99,11 +100,12 @@ impl Expression {
             Expression::Match(_) => "<Match>",
             Expression::For(_) => "<For>",
             Expression::Block(_) => "<Block>",
+            Expression::Closure(_) => "<Closure>",
         }
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Literal {
     Unit,
     Boolean(bool),
@@ -113,14 +115,14 @@ pub enum Literal {
     String(Box<String>),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Operation {
     pub lhs: Box<Expression>,
     pub rhs: Box<Expression>,
     pub op: Operator,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Operator {
     Arithmetic(ArithmeticOperator),
     Comparison(ComparisonOperator),
@@ -132,65 +134,71 @@ pub enum Operator {
 impl Operator {
     pub fn precedence(&self) -> i32 {
         match self {
-            Operator::Comparison(_) => 10,
-            Operator::Boolean(_) => 10,
-            Operator::CompoundAssignment(_) => 10,
-            Operator::Arithmetic(ArithmeticOperator::Add | ArithmeticOperator::Sub) => 20,
+            Operator::Assignment => 10,
+            Operator::Comparison(_) => 20,
+            Operator::Boolean(_) => 20,
+            Operator::CompoundAssignment(_) => 20,
+            Operator::Arithmetic(ArithmeticOperator::Add | ArithmeticOperator::Sub) => 30,
             Operator::Arithmetic(
                 ArithmeticOperator::Mul | ArithmeticOperator::Div | ArithmeticOperator::Mod,
-            ) => 30,
-            Operator::Assignment => 40,
+            ) => 40,
         }
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Call {
     pub path: String,
     pub params: Vec<Expression>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Struct {
     pub path: String,
     pub fields: Vec<StructField>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct StructField {
     pub ident: String,
     pub expr: Box<Expression>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Range {
     pub from: Option<Box<Expression>>,
     pub to: Option<Box<Expression>>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct IfElse {
     pub condition: Box<Expression>,
     pub if_expr: Box<Expression>,
     pub else_expr: Option<Box<Expression>>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Match {
     pub match_expr: Box<Expression>,
     pub branches: Vec<MatchBranch>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MatchBranch {
     pub match_expr: Box<Expression>,
     pub if_expr: Option<Box<Expression>>,
     pub expr: Box<Expression>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct For {
     pub ident: String,
     pub in_expr: Box<Expression>,
+    pub block: Box<Expression>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Closure {
+    pub args: Vec<String>,
     pub block: Box<Expression>,
 }

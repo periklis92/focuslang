@@ -12,10 +12,10 @@
 
 [Visibility](#visibility)<sup>?</sup>  
 (  
-    [Module](#module)  
-    | [Use](#use)    
-    | [Type Alias](#type-alias)  
-    | [Struct](#struct)  
+[Module](#module)  
+| [Use](#use)    
+| [Type Alias](#type-alias)  
+| [Struct](#struct)  
 )
 
 ### Visibility

@@ -3,9 +3,9 @@ use scanner::{Scanner, ScannerPosition, Token};
 use crate::{
     op::{ArithmeticOperator, BooleanOperator, ComparisonOperator},
     stmt::{
-        AliasItem, Call, Expression, For, IfElse, Item, ItemStmt, LetStmt, Literal, Match,
-        MatchBranch, Operation, Operator, Range, Stmt, StmtDetails, StructItem, StructItemField,
-        Visibility,
+        AliasItem, Call, Closure, Expression, For, IfElse, Item, ItemStmt, LetStmt, Literal, Match,
+        MatchBranch, Operation, Operator, Range, Stmt, StmtDetails, Struct, StructField,
+        StructItem, StructItemField, Visibility,
     },
     FunctionType, ParserError, ParserErrorInfo, Type,
 };
@@ -61,22 +61,32 @@ impl<'a> Parser<'a> {
             None
         };
 
-        match self.scanner.peek_skip_empty() {
+        let res = match self.scanner.peek_skip_empty() {
             Token::Let => {
                 self.depth += 1;
-                let stmt = self.parse_let(visibility).map(|res| Stmt::Let(res));
+                let stmt = self.parse_let(visibility).map(|res| Stmt::Let(res))?;
                 self.depth -= 1;
                 stmt
             }
-            Token::Type | Token::Use | Token::Module => {
-                self.parse_item_stmt(visibility).map(|res| Stmt::Item(res))
-            }
+            Token::Type | Token::Use | Token::Module => self
+                .parse_item_stmt(visibility)
+                .map(|res| Stmt::Item(res))?,
             _ => {
                 self.depth += 1;
-                let stmt = self.parse_expr().map(|res| Stmt::Expr(res));
+                let stmt = self.parse_expr().map(|res| Stmt::Expr(res))?;
                 self.depth -= 1;
                 stmt
             }
+        };
+
+        if !self.scanner.check_skip_empty(Token::NewLine)
+            && !self.scanner.check_skip_empty(Token::Eof)
+        {
+            Err(ParserErrorInfo::UnexpectedToken {
+                found: self.scanner.advance_skip_empty(),
+            })
+        } else {
+            Ok(res)
         }
     }
 
@@ -90,13 +100,12 @@ impl<'a> Parser<'a> {
             let ret;
 
             loop {
-                self.expect_indeneted(Token::Ident)?;
-                let ident = self.scanner.slice().to_string();
+                let ty = self.parse_type()?;
 
                 if self.scanner.check_and_consume_indented(Token::ThinArrow) {
-                    args.push(ident);
+                    args.push(ty);
                 } else if self.scanner.check_and_consume_indented(Token::RightParen) {
-                    ret = ident;
+                    ret = ty;
                     break;
                 } else {
                     return Err(ParserErrorInfo::UnexpectedToken {
@@ -105,7 +114,10 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            Ok(Type::Function(FunctionType { args, ret }))
+            Ok(Type::Function(FunctionType {
+                args,
+                ret: Box::new(ret),
+            }))
         } else {
             Err(ParserErrorInfo::UnexpectedToken {
                 found: self.scanner.advance_indented().unwrap_or(Token::Unknown),
@@ -161,14 +173,18 @@ impl<'a> Parser<'a> {
             args.push(self.scanner.slice().to_string());
         }
 
-        let expr = if self.scanner.check_and_consume_indented(Token::Assign) {
-            Some(self.parse_block()?.into())
+        if self.scanner.check_and_consume_indented(Token::Unit) {
+            args.push("".to_string());
+        }
+
+        let ty = if self.scanner.check_and_consume_indented(Token::Colon) {
+            Some(self.parse_type()?)
         } else {
             None
         };
 
-        let ty = if self.scanner.check_and_consume_indented(Token::Colon) {
-            Some(self.parse_type()?)
+        let expr = if self.scanner.check_and_consume_indented(Token::Assign) {
+            Some(self.parse_block()?.into())
         } else {
             None
         };
@@ -192,6 +208,7 @@ impl<'a> Parser<'a> {
             Token::For => self.parse_for(),
             Token::Match => self.parse_match(),
             Token::Range => self.parse_range(),
+            Token::Fn => self.parse_closure(),
             Token::Number if self.scanner.peek_skip_empty_nth(2) == Some(Token::Range) => {
                 self.parse_range()
             }
@@ -200,7 +217,8 @@ impl<'a> Parser<'a> {
                 cloned.parse_path()?;
                 match cloned.scanner.peek_indented() {
                     Some(Token::Range) => self.parse_range(),
-                    Some(t) if t.is_arithmetic_operator() => self.parse_operation(),
+                    Some(Token::LeftCurly) => self.parse_struct(),
+                    Some(t) if t.is_operator() => self.parse_operation(),
                     Some(t) if t != Token::Eof => self.parse_call(),
                     _ => Ok(Expression::Path(self.parse_path()?)),
                 }
@@ -211,6 +229,30 @@ impl<'a> Parser<'a> {
                 found: self.scanner.advance_skip_empty(),
             }),
         }
+    }
+
+    fn parse_struct(&mut self) -> Result<Expression, ParserErrorInfo> {
+        self.expect_indented(Token::Ident)?;
+        let path = self.scanner.slice().to_string();
+        self.expect_ignore(Token::LeftCurly)?;
+
+        let mut fields = Vec::new();
+
+        loop {
+            if self.scanner.check_ignore(Token::RightCurly) {
+                break;
+            }
+
+            self.expect_ignore(Token::Ident)?;
+            let ident = self.scanner.slice().to_string();
+            self.expect_skip_empty(Token::Colon)?;
+            let expr = self.parse_expr()?.into();
+            self.scanner.check_and_consume(Token::Comma);
+            fields.push(StructField { ident, expr })
+        }
+
+        self.expect_ignore(Token::RightCurly)?;
+        Ok(Expression::Struct(Struct { path, fields }))
     }
 
     fn parse_match(&mut self) -> Result<Expression, ParserErrorInfo> {
@@ -367,6 +409,7 @@ impl<'a> Parser<'a> {
             Some(Token::LessEqual) => Some(Operator::Comparison(ComparisonOperator::LessEqual)),
             Some(Token::Equal) => Some(Operator::Comparison(ComparisonOperator::Equal)),
             Some(Token::NotEqual) => Some(Operator::Comparison(ComparisonOperator::NotEqual)),
+            Some(Token::Assign) => Some(Operator::Assignment),
             _ => None,
         }
     }
@@ -418,6 +461,7 @@ impl<'a> Parser<'a> {
                 self.expect_ignore(Token::RightParen)?;
                 Ok(expr)
             }
+            Token::Fn => self.parse_closure(),
             Token::LeftSquare => {
                 self.scanner.advance_skip_empty();
                 let mut exprs = Vec::new();
@@ -503,6 +547,7 @@ impl<'a> Parser<'a> {
                     return Err(ParserErrorInfo::InvalidCharacterLiteral);
                 }
                 let ch = ch.chars().next().unwrap();
+                self.expect(Token::SingleQuote)?;
                 Ok(Expression::Literal(Literal::Char(ch)))
             }
             Token::Unit => {
@@ -529,6 +574,17 @@ impl<'a> Parser<'a> {
                 Err(ParserErrorInfo::UnexpectedToken { found: token })
             }
         }
+    }
+
+    fn parse_closure(&mut self) -> Result<Expression, ParserErrorInfo> {
+        self.expect_indented(Token::Fn)?;
+        let mut args = Vec::new();
+        while self.scanner.check_and_consume_indented(Token::Ident) {
+            args.push(self.scanner.slice().to_string());
+        }
+        self.expect_indented(Token::ThinArrow)?;
+        let block = self.parse_block()?.into();
+        Ok(Expression::Closure(Closure { args, block }))
     }
 
     fn parse_item_stmt(
@@ -650,7 +706,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn expect_indeneted(&mut self, token: Token) -> Result<(), ParserErrorInfo> {
+    fn expect_indented(&mut self, token: Token) -> Result<(), ParserErrorInfo> {
         let next_token = self.scanner.advance_indented();
         if next_token == Some(token) {
             Ok(())
@@ -704,6 +760,8 @@ mod tests {
     fn parse_operation() {
         let mut parser = Parser::new_with_top_level("1 - 2 * 3 + 4 / 5", None);
         println!("{:?}", parser.parse_expr());
+        let mut parser = Parser::new_with_top_level("index = index + 1", None);
+        println!("{:?}", parser.parse_expr());
     }
 
     #[test]
@@ -754,13 +812,12 @@ mod tests {
     }
 
     #[test]
-    fn parse_let() {
+    fn parse_closure() {
         let mut parser = Parser::new(
-            r#"let fun a = 
-            if a.x > a.y then
-              a.x - a.y
-            else
-              a.y - a.x"#,
+            r#"let fun = 
+            fn a -> 
+                let b = a + 1
+                b + 1"#,
             None,
         );
         println!("{:?}", parser.parse());

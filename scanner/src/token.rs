@@ -58,6 +58,7 @@ pub enum Token {
     False,
     In,
     Do,
+    Fn,
 }
 
 impl From<&str> for Token {
@@ -112,6 +113,7 @@ impl From<&str> for Token {
             "false" => Token::False,
             "in" => Token::In,
             "do" => Token::Do,
+            "fn" => Token::Fn,
             c if c.chars().next().is_some_and(|c| c.is_whitespace()) => Token::Empty,
             c if c.chars().next().is_some_and(|c| c.is_numeric()) => Token::Number,
             c if c
@@ -132,10 +134,23 @@ impl Token {
         matches!(self, Token::NewLine | Token::Empty | Token::Eof)
     }
 
-    pub fn is_arithmetic_operator(&self) -> bool {
+    pub fn is_operator(&self) -> bool {
         matches!(
             self,
-            Token::Plus | Token::Dash | Token::Star | Token::Slash | Token::Percent
+            Token::Plus
+                | Token::Dash
+                | Token::Star
+                | Token::Slash
+                | Token::Percent
+                | Token::Assign
+                | Token::Equal
+                | Token::NotEqual
+                | Token::Greater
+                | Token::GreaterEqual
+                | Token::Less
+                | Token::LessEqual
+                | Token::And
+                | Token::Or
         )
     }
 
@@ -155,11 +170,11 @@ impl Token {
         self.is_literal()
             || matches!(
                 self,
-                Token::Ampersand
-                    | Token::LeftParen
+                Token::LeftParen
                     | Token::Ident
-                    | Token::Star
                     | Token::LeftSquare
+                    | Token::Ampersand
+                    | Token::Star
             )
     }
 
@@ -180,6 +195,7 @@ impl Token {
                 | Token::True
                 | Token::False
                 | Token::In
+                | Token::Fn
         )
     }
 }
