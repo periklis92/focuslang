@@ -1,4 +1,19 @@
-<div class="flex-shrink-0 p-3" style="width: 12rem;" />
+<div class="position-relative">
+	<div class="collapse collapse-horizontal expanded" id="collapseExample">
+		<div class=" flex-shrink-0 p-3" style="width: 120px;" />
+	</div>
+	<button
+		class="btn btn-secondary position-absolute translate-end badge"
+		style="width: 80px; z-index: 9999;height: 50px; left: 100%; top: 15px; margin-left:15px;"
+		type="button"
+		data-bs-toggle="collapse"
+		data-bs-target="#collapseExample"
+		aria-expanded="false"
+		aria-controls="collapseExample"
+	>
+		<i class="bi bi-list fs-2" />
+	</button>
+</div>
 
 <div class="divider bg-primary" />
 
