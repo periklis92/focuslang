@@ -11,9 +11,11 @@ mod tests;
 #[cfg(target_arch = "wasm32")]
 mod wasm;
 
+use std::cell::RefMut;
 use std::{cell::RefCell, collections::HashSet, rc::Rc};
 
 use crate::context::Context;
+use crate::object::ValueRef;
 use crate::r#type::Type;
 use crate::r#type::TypeRegistry;
 use crate::stack::ValueStack;
@@ -75,20 +77,31 @@ impl Interpreter {
         value
     }
 
-    fn resolve_path<'a, T: Iterator<Item = &'a str>>(
-        &mut self,
-        mut iter: T,
-        value: Value,
-        ty: &Type,
-    ) -> Result<Value, String> {
-        if let Some(s) = iter.next() {
-            let fields = ty.as_struct().ok_or("Invalid path.".to_string())?;
+    fn resolve_path(&mut self, path: String) -> Result<ValueRef, String> {
+        let mut path_parts = path.split('.');
+        let root = path_parts.next().ok_or("Invalid path.".to_string())?;
+
+        let local = self
+            .context
+            .borrow()
+            .find_local(&root)
+            .ok_or(format!("Unknown path {path}."))?;
+
+        let mut value = self.stack.get_value(local.sp.unwrap()).unwrap();
+        let mut value_type = self.type_registry.get_type_from_id(local.ty).unwrap();
+        let mut value_ref = ValueRef::StackRef {
+            sp: local.sp.unwrap(),
+            type_id: local.ty,
+        };
+
+        for p in path_parts {
+            let fields = value_type.as_struct().ok_or("Invalid path.".to_string())?;
 
             let (offset, field) = fields
                 .iter()
                 .enumerate()
-                .find(|f| f.1.ident == s)
-                .ok_or(format!("Invalid field name {s}"))?;
+                .find(|f| f.1.ident == p)
+                .ok_or(format!("Invalid field name {p}"))?;
 
             let field_type = self
                 .type_registry
@@ -97,32 +110,37 @@ impl Interpreter {
 
             match value {
                 Value::Object(object) => {
-                    self.resolve_path(iter, object.get_value(offset).unwrap(), &field_type)
+                    value = object.borrow().get_value(offset).unwrap();
+                    value_type = field_type;
+                    value_ref = ValueRef::ObjectRef {
+                        object: object.clone(),
+                        index: offset,
+                        type_id: value_type.type_id,
+                    }
                 }
-                _ => Err("Expected struct, found another type.".to_string()),
+                _ => return Err("Expected struct, found another type.".to_string()),
             }
-        } else {
-            return Ok(value);
         }
+
+        Ok(value_ref)
     }
 
     fn interpret_expression(&mut self, expr: Expression) -> Result<Value, String> {
         match expr {
             Expression::Literal(literal) => self.interpret_literal(literal),
             Expression::Path(path) => {
-                let mut path_parts = path.split('.');
-                let root = path_parts.next().ok_or("Invalid path.".to_string())?;
+                let value_ref = self.resolve_path(path)?;
 
-                let local = self
-                    .context
-                    .borrow()
-                    .find_local(&root)
-                    .ok_or(format!("Unknown path {path}."))?;
-
-                let value = self.stack.get_value(local.sp.unwrap()).unwrap();
-                let value_type = self.type_registry.get_type_from_id(local.ty).unwrap();
-
-                self.resolve_path(path_parts, value, &value_type)
+                match value_ref {
+                    ValueRef::StackRef { sp, .. } => Ok(self
+                        .stack
+                        .get_value(sp)
+                        .expect("Unable to find registered local.")),
+                    ValueRef::ObjectRef { object, index, .. } => Ok(object
+                        .borrow()
+                        .get_value(index)
+                        .expect("Unable to find field in struct.")),
+                }
             }
             Expression::Operation(operation) => self.interpret_operation(operation),
             Expression::Call(call) => {

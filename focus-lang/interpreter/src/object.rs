@@ -4,6 +4,18 @@ use parser::stmt::Expression;
 
 use crate::{context::Context, r#type::TypeId};
 
+pub enum ValueRef {
+    StackRef {
+        sp: usize,
+        type_id: TypeId,
+    },
+    ObjectRef {
+        object: Rc<RefCell<Object>>,
+        index: usize,
+        type_id: TypeId,
+    },
+}
+
 pub struct CapturedName {
     pub ident: String,
     pub value: Rc<RefCell<Value>>,
@@ -25,7 +37,7 @@ pub enum Value {
     Integer(i64),
     Float(f64),
     Ref(Rc<RefCell<Value>>),
-    Object(Rc<Object>),
+    Object(Rc<RefCell<Object>>),
     Function(Rc<RefCell<Function>>),
 }
 
@@ -88,6 +100,22 @@ impl Value {
             _ => None,
         }
     }
+
+    pub fn mul(&self, other: Value) -> Option<Value> {
+        match (self.deref(), other.deref_value()) {
+            (Value::Float(l), Value::Float(r)) => Some(Value::Float(l * r)),
+            (Value::Integer(l), Value::Integer(r)) => Some(Value::Integer(l * r)),
+            _ => None,
+        }
+    }
+
+    pub fn div(&self, other: Value) -> Option<Value> {
+        match (self.deref(), other.deref_value()) {
+            (Value::Float(l), Value::Float(r)) => Some(Value::Float(l / r)),
+            (Value::Integer(l), Value::Integer(r)) => Some(Value::Integer(l / r)),
+            _ => None,
+        }
+    }
 }
 
 impl Debug for Value {
@@ -99,7 +127,10 @@ impl Debug for Value {
             Self::Integer(arg0) => f.debug_tuple("Integer").field(arg0).finish(),
             Self::Float(arg0) => f.debug_tuple("Float").field(arg0).finish(),
             Self::Ref(arg0) => f.debug_tuple("Ref").field(arg0).finish(),
-            Self::Object(arg0) => f.debug_tuple("Object").field(&arg0.type_id).finish(),
+            Self::Object(arg0) => f
+                .debug_tuple("Object")
+                .field(&arg0.borrow().type_id)
+                .finish(),
             Self::Function(_) => f.debug_tuple("Function").finish(),
         }
     }
@@ -114,6 +145,11 @@ impl Object {
     #[inline]
     pub fn get_value(&self, index: usize) -> Option<Value> {
         self.values.get(index).cloned()
+    }
+
+    #[inline]
+    pub fn get_value_mut(&mut self, index: usize) -> Option<&mut Value> {
+        self.values.get_mut(index)
     }
 
     pub fn set_value(&mut self, index: usize, value: Value) -> Option<Value> {
