@@ -3,10 +3,10 @@
 Try the project in the [Playground](https://periklis92.github.io/focuslang).
 
 ## Contents:
- - [Syntax Rules](SyntaxRules.md)
+ - [Syntax Rules](docs/SyntaxRules.md)
  - Concepts:
-    - [Iter](Iter.md)
-    - [Functors](Functors.md)
+    - [Iter](docs/Iter.md)
+    - [Functors](docs/Functors.md)
  - [Examples](#examples)
 
 ## Examples:
