@@ -1,13 +1,19 @@
 <script lang="ts">
-	export let output: string[] = [];
+	type LogMessage = { message: String; timestamp: Date };
+	export let output: LogMessage[] = [];
+
+	export function log(message: string) {
+		output.push({ timestamp: new Date(), message });
+		output = output;
+	}
 </script>
 
 <div class="d-flex flex-column text-bg-dark w-100" style="height: 30%;">
 	<span class="bg-body-tertiary bg-dark" data-bs-theme="dark"><div class="mx-1">Output</div></span>
-	<div class="output-text-area px-1" contenteditable="false">
+	<div class="output-text-area" contenteditable="false">
 		{#each output as line}
-			<div class="border-bottom border-dark w-100 mb-1">
-				{line}
+			<div class="border-bottom border-secondary w-100 bg-dark">
+				{line.timestamp.toLocaleTimeString()}: {line.message}
 			</div>
 		{/each}
 	</div>
