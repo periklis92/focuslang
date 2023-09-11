@@ -7,8 +7,6 @@
 
 	export let data: PageData;
 
-	import('$lib/assets/test.html?raw').then((res) => console.log(res));
-
 	let output: Output;
 	let sidebar: SideBar;
 	let source: string;
@@ -24,7 +22,6 @@
 			console.log(result);
 			const log = JSON.stringify(result, (_, v) => (typeof v === 'bigint' ? Number(v) : v));
 			output.log(log);
-			console.log(result);
 			console.debug('Code executed successfully.');
 		} catch (err: any) {
 			output.log(err);

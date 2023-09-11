@@ -1,7 +1,7 @@
 use crate::{object::Value, Interpreter};
 
 use js_sys::Object;
-use wasm_bindgen::{convert::IntoWasmAbi, prelude::wasm_bindgen, JsValue};
+use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl Interpreter {
