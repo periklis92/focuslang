@@ -80,6 +80,7 @@ impl<'a> Parser<'a> {
         };
 
         if !self.scanner.check_skip_empty(Token::NewLine)
+            && self.depth == 0
             && !self.scanner.check_skip_empty(Token::Eof)
         {
             Err(ParserErrorInfo::UnexpectedToken {
@@ -820,6 +821,12 @@ mod tests {
                 b + 1"#,
             None,
         );
+        println!("{:?}", parser.parse());
+    }
+
+    #[test]
+    fn parse_if_else() {
+        let mut parser = Parser::new(r#"let a = if true then 1"#, None);
         println!("{:?}", parser.parse());
     }
 }
