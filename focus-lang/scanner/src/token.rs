@@ -95,6 +95,8 @@ impl From<&str> for Token {
             "==" => Token::Equal,
             ">=" => Token::GreaterEqual,
             "<=" => Token::LessEqual,
+            "||" => Token::Or,
+            "&&" => Token::And,
             "!=" => Token::NotEqual,
             "()" => Token::Unit,
             ".." => Token::Range,
