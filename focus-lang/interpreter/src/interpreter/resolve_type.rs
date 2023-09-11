@@ -59,8 +59,26 @@ impl Interpreter {
                 }
                 match operation.op {
                     parser::stmt::Operator::Arithmetic(_) => lhs_type_id,
-                    parser::stmt::Operator::Comparison(_) => PrimitiveType::Boolean.type_id(),
-                    parser::stmt::Operator::Boolean(_) => PrimitiveType::Boolean.type_id(),
+                    parser::stmt::Operator::Comparison(_) => {
+                        if !self
+                            .type_registry
+                            .are_types_equal(lhs_type_id, PrimitiveType::Boolean.type_id())?
+                        {
+                            return Err("Boolean type expected.".to_string());
+                        } else {
+                            PrimitiveType::Boolean.type_id()
+                        }
+                    }
+                    parser::stmt::Operator::Boolean(_) => {
+                        if !self
+                            .type_registry
+                            .are_types_equal(lhs_type_id, PrimitiveType::Boolean.type_id())?
+                        {
+                            return Err("Boolean type expected.".to_string());
+                        } else {
+                            PrimitiveType::Boolean.type_id()
+                        }
+                    }
                     parser::stmt::Operator::Assignment => PrimitiveType::Unit.type_id(),
                     parser::stmt::Operator::CompoundAssignment(_) => lhs_type_id,
                 }
@@ -91,7 +109,30 @@ impl Interpreter {
             Expression::Range(_) => todo!(),
             Expression::Array(_) => todo!(),
             Expression::Index(_) => todo!(),
-            Expression::IfElse(_) => todo!(),
+            Expression::IfElse(if_else) => {
+                let if_type_id = self.resolve_expr_type(&if_else.if_expr, expected_type)?;
+
+                if let Some(else_expr) = &if_else.else_expr {
+                    let else_type_id = self.resolve_expr_type(else_expr, expected_type)?;
+                    if !self
+                        .type_registry
+                        .are_types_equal(if_type_id, else_type_id)?
+                    {
+                        return Err("If/Else types don't match.".to_string());
+                    } else {
+                        if_type_id
+                    }
+                } else {
+                    if self
+                        .type_registry
+                        .are_types_equal(if_type_id, PrimitiveType::Unit.type_id())?
+                    {
+                        PrimitiveType::Unit.type_id()
+                    } else {
+                        return Err("Expected unit type.".to_string());
+                    }
+                }
+            }
             Expression::Match(_) => todo!(),
             Expression::For(_) => todo!(),
             Expression::Block(block) => {

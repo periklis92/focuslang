@@ -6,20 +6,19 @@ mod resolve_type;
 mod stmt;
 mod r#struct;
 
+mod call;
 #[cfg(test)]
 mod tests;
 #[cfg(target_arch = "wasm32")]
 mod wasm;
 
-use std::cell::RefMut;
 use std::{cell::RefCell, collections::HashSet, rc::Rc};
 
 use crate::context::Context;
+use crate::object::Value;
 use crate::object::ValueRef;
-use crate::r#type::Type;
 use crate::r#type::TypeRegistry;
 use crate::stack::ValueStack;
-use crate::{object::Value, r#type::FunctionType};
 use parser::{
     stmt::{Expression, Stmt},
     Parser, ParserError, ParserErrorInfo,
@@ -28,7 +27,7 @@ use parser::{
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use crate::{context::Local, object::Function};
+use crate::object::Function;
 
 pub enum InterpreterError {
     ParserError(ParserError),
@@ -143,97 +142,47 @@ impl Interpreter {
                 }
             }
             Expression::Operation(operation) => self.interpret_operation(operation),
-            Expression::Call(call) => {
-                let function_name = self.context.borrow().find_local(&call.path).ok_or(format!(
-                    "Unable to get value from stack for path {}.",
-                    call.path
-                ))?;
-
-                let value = self
-                    .stack
-                    .get_value(function_name.sp.unwrap())
-                    .ok_or(format!(
-                        "Unable to get value from stack for path {}.",
-                        call.path
-                    ))?;
-
-                let func_ty = self.type_registry.get_type_from_id(function_name.ty);
-
-                let FunctionType {
-                    arg_types,
-                    ret_type,
-                } = func_ty
-                    .as_deref()
-                    .map(|ty| ty.as_function())
-                    .flatten()
-                    .ok_or("Unexpected type for function".to_string())?;
-
-                self.stack.push_frame();
-                let (parent_context, expr) = match value.deref_value() {
-                    Value::Function(function) => {
-                        let function = function.borrow();
-                        let mut ctx_mut = function.context.borrow_mut();
-
-                        if function.args.len() != call.params.len() {
-                            return Err(format!("Invalid number of arguments in function call. Expected {} while {} were passed.",
-                            function.args.len(),
-                            call.params.len()));
-                        }
-
-                        for (i, arg) in function.args.iter().enumerate() {
-                            let expr = call.params[i].clone();
-                            let expr_type_id = self.resolve_expr_type(&expr, Some(arg_types[i]))?;
-                            let value = self.interpret_expression(expr)?;
-                            if !self
-                                .type_registry
-                                .are_types_equal(arg_types[i], expr_type_id)?
-                            {
-                                return Err(format!("Unexpected type for argument {i}"));
-                            }
-                            let sp = self.stack.push_value(value);
-                            ctx_mut.add_local(
-                                &arg,
-                                Local {
-                                    ty: expr_type_id,
-                                    sp: Some(sp),
-                                },
-                            );
-                        }
-
-                        for name in &function.captured_names {
-                            let sp = self.stack.push_value(Value::Ref(name.value.clone()));
-                            ctx_mut.add_local(
-                                &name.ident,
-                                Local {
-                                    sp: Some(sp),
-                                    ty: name.type_id,
-                                },
-                            );
-                        }
-                        (function.context.clone(), function.expr.clone())
-                    }
-                    _ => return Err("Expected a function or closure for call.".to_string()),
-                };
-                let inner_context =
-                    Rc::new(RefCell::new(Context::new().with_parent(parent_context)));
-                let previous_context = std::mem::take(&mut self.context);
-                self.context = inner_context;
-
-                let resolved_ret_type = self.resolve_expr_type(&expr, Some(*ret_type))?;
-                self.type_registry
-                    .are_types_equal(resolved_ret_type, *ret_type)?;
-
-                let value = self.interpret_expression(expr)?;
-
-                self.context = previous_context;
-                self.stack.pop_frame();
-                Ok(value)
-            }
+            Expression::Call(call) => self.interpret_call(call),
             Expression::Struct(r#struct) => self.interpret_struct(r#struct),
             Expression::Range(_) => todo!(),
             Expression::Array(_) => todo!(),
             Expression::Index(_) => todo!(),
-            Expression::IfElse(_) => todo!(),
+            Expression::IfElse(if_else) => {
+                let condition_type_id = self.resolve_expr_type(&if_else.condition, None)?;
+                let condition_type = self
+                    .type_registry
+                    .get_type_from_id(condition_type_id)
+                    .expect("Condition type not found.");
+
+                if !condition_type.is_boolean() {
+                    return Err(format!(
+                        "Unexpected type for condition {}",
+                        condition_type.ident
+                    ));
+                }
+
+                let condition_value = self.interpret_expression(*if_else.condition)?;
+
+                let if_type_id = self.resolve_expr_type(&if_else.if_expr, None)?;
+
+                if let Some(else_expr) = &if_else.else_expr {
+                    let else_type_id = self.resolve_expr_type(else_expr, None)?;
+                    if !self
+                        .type_registry
+                        .are_types_equal(if_type_id, else_type_id)?
+                    {
+                        return Err("If/Else expression return types don't match.".to_string());
+                    }
+                }
+
+                match condition_value {
+                    Value::Boolean(true) => self.interpret_expression(*if_else.if_expr),
+                    Value::Boolean(false) if matches!(if_else.else_expr, Some(_)) => {
+                        self.interpret_expression(*if_else.else_expr.unwrap())
+                    }
+                    _ => unreachable!(),
+                }
+            }
             Expression::Match(_) => todo!(),
             Expression::For(_) => todo!(),
             Expression::Block(block) => self.interpret_block(block),

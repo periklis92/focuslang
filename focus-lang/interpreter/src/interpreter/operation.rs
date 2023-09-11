@@ -1,5 +1,5 @@
 use parser::{
-    op::ArithmeticOperator,
+    op::{ArithmeticOperator, BooleanOperator},
     stmt::{Expression, Operation, Operator},
 };
 
@@ -36,7 +36,16 @@ impl Interpreter {
                 ArithmeticOperator::Mod => todo!(),
             },
             Operator::Comparison(_) => todo!(),
-            Operator::Boolean(_) => todo!(),
+            Operator::Boolean(boolean) => match boolean {
+                BooleanOperator::Or => match (lhs, rhs) {
+                    (Value::Boolean(false), Value::Boolean(false)) => Ok(Value::Boolean(false)),
+                    _ => Ok(Value::Boolean(true)),
+                },
+                BooleanOperator::And => match (lhs, rhs) {
+                    (Value::Boolean(true), Value::Boolean(true)) => Ok(Value::Boolean(true)),
+                    _ => Ok(Value::Boolean(false)),
+                },
+            },
             Operator::Assignment => {
                 let Expression::Path(path) = *operation.lhs else {
                     return Err(format!(
