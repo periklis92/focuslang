@@ -93,27 +93,55 @@ impl Value {
         }
     }
 
-    pub fn sub(&self, other: Value) -> Option<Value> {
-        match (self.deref(), other.deref_value()) {
+    pub fn sub(self, other: Value) -> Option<Value> {
+        match (self.deref_value(), other.deref_value()) {
             (Value::Float(l), Value::Float(r)) => Some(Value::Float(l - r)),
             (Value::Integer(l), Value::Integer(r)) => Some(Value::Integer(l - r)),
             _ => None,
         }
     }
 
-    pub fn mul(&self, other: Value) -> Option<Value> {
-        match (self.deref(), other.deref_value()) {
+    pub fn mul(self, other: Value) -> Option<Value> {
+        match (self.deref_value(), other.deref_value()) {
             (Value::Float(l), Value::Float(r)) => Some(Value::Float(l * r)),
             (Value::Integer(l), Value::Integer(r)) => Some(Value::Integer(l * r)),
             _ => None,
         }
     }
 
-    pub fn div(&self, other: Value) -> Option<Value> {
-        match (self.deref(), other.deref_value()) {
+    pub fn div(self, other: Value) -> Option<Value> {
+        match (self.deref_value(), other.deref_value()) {
             (Value::Float(l), Value::Float(r)) => Some(Value::Float(l / r)),
             (Value::Integer(l), Value::Integer(r)) => Some(Value::Integer(l / r)),
             _ => None,
+        }
+    }
+
+    pub fn are_equal(&self, other: &Value) -> bool {
+        match (self.clone().deref_value(), other.clone().deref_value()) {
+            (Value::Unit, Value::Unit) => true,
+            (Value::Boolean(v1), Value::Boolean(v2)) => v1 == v2,
+            (Value::Char(v1), Value::Char(v2)) => v1 == v2,
+            (Value::Integer(v1), Value::Integer(v2)) => v1 == v2,
+            (Value::Float(v1), Value::Float(v2)) => v1 == v2,
+            (Value::Ref(v1), Value::Ref(v2)) => v1.borrow().are_equal(&v2.borrow()),
+            (Value::Object(v1), Value::Object(v2)) => v1.borrow().equals(&v2.borrow()),
+            (Value::Function(v1), Value::Function(v2)) => Rc::ptr_eq(&v1, &v2),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn set(&mut self, other: Value) {
+        match (self, other) {
+            (Value::Unit, Value::Unit) => {}
+            (Value::Boolean(v1), Value::Boolean(v2)) => *v1 = v2,
+            (Value::Char(v1), Value::Char(v2)) => *v1 = v2,
+            (Value::Integer(v1), Value::Integer(v2)) => *v1 = v2,
+            (Value::Float(v1), Value::Float(v2)) => *v1 = v2,
+            (Value::Ref(v1), Value::Ref(v2)) => *v1 = v2,
+            (Value::Ref(v1), v2) => v1.borrow_mut().set(v2),
+            (Value::Object(v1), Value::Object(v2)) => *v1 = v2,
+            _ => unreachable!(),
         }
     }
 }
@@ -154,8 +182,14 @@ impl Object {
 
     pub fn set_value(&mut self, index: usize, value: Value) -> Option<Value> {
         let val = self.values.get_mut(index)?;
-        *val = value.clone();
+        val.set(value.clone());
         Some(value)
+    }
+
+    pub fn copy_from_object(&mut self, object: &Object) {
+        for (i, v) in self.values.iter_mut().enumerate() {
+            v.set(object.get_value(i).unwrap())
+        }
     }
 
     #[inline]
@@ -165,5 +199,14 @@ impl Object {
 
     pub fn values(&self) -> &[Value] {
         &self.values
+    }
+
+    pub fn equals(&self, other: &Object) -> bool {
+        self.type_id == other.type_id
+            && self
+                .values
+                .iter()
+                .zip(other.values.iter())
+                .all(|(v1, v2)| v1.are_equal(v2))
     }
 }
