@@ -14,20 +14,8 @@ impl Interpreter {
     ) -> Result<TypeId, String> {
         match stmt {
             Stmt::Item(_) => Err("An item declaration cannot have a type.".to_string()),
-            Stmt::Let(e) => {
-                if let Some(ty) = &e.ty {
-                    self.type_registry
-                        .get_type_from_expr(ty)
-                        .ok_or("Unable to resolve type.".to_string())
-                        .map(|t| t.type_id)
-                } else {
-                    if let Some(expr) = &e.expr {
-                        self.resolve_expr_type(&expr, expected_type)
-                    } else {
-                        Err("You must declare a type for a let statement with no value."
-                            .to_string())
-                    }
-                }
+            Stmt::Let(_) => {
+                return Ok(PrimitiveType::Unit.type_id());
             }
             Stmt::Expr(expr) => self.resolve_expr_type(expr, expected_type),
         }
