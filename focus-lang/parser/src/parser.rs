@@ -247,7 +247,7 @@ impl<'a> Parser<'a> {
             self.expect_ignore(Token::Ident)?;
             let ident = self.scanner.slice().to_string();
             self.expect_skip_empty(Token::Colon)?;
-            let expr = self.parse_expr()?.into();
+            let expr = self.parse_operation()?.into();
             self.scanner.check_and_consume(Token::Comma);
             fields.push(StructField { ident, expr })
         }
@@ -827,6 +827,12 @@ mod tests {
     #[test]
     fn parse_if_else() {
         let mut parser = Parser::new(r#"let a = if true then 1"#, None);
+        println!("{:?}", parser.parse());
+    }
+
+    #[test]
+    fn parse_struct() {
+        let mut parser = Parser::new(r#"let line = Line{a:a,b:b}"#, None);
         println!("{:?}", parser.parse());
     }
 }
