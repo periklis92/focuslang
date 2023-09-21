@@ -7,6 +7,7 @@ mod stmt;
 mod r#struct;
 
 mod call;
+mod expr;
 #[cfg(test)]
 mod tests;
 #[cfg(target_arch = "wasm32")]
@@ -17,6 +18,7 @@ use std::{cell::RefCell, collections::HashSet, rc::Rc};
 use crate::context::Context;
 use crate::object::Value;
 use crate::object::ValueRef;
+use crate::r#type::PrimitiveType;
 use crate::r#type::TypeRegistry;
 use crate::stack::ValueStack;
 use parser::{
@@ -124,83 +126,17 @@ impl Interpreter {
         Ok(value_ref)
     }
 
-    fn interpret_expression(&mut self, expr: Expression) -> Result<Value, String> {
-        match expr {
-            Expression::Literal(literal) => self.interpret_literal(literal),
-            Expression::Path(path) => {
-                let value_ref = self.resolve_path(path)?;
-
-                match value_ref {
-                    ValueRef::StackRef { sp, .. } => Ok(self
-                        .stack
-                        .get_value(sp)
-                        .expect("Unable to find registered local.")),
-                    ValueRef::ObjectRef { object, index, .. } => Ok(object
-                        .borrow()
-                        .get_value(index)
-                        .expect("Unable to find field in struct.")),
-                }
-            }
-            Expression::Operation(operation) => self.interpret_operation(operation),
-            Expression::Call(call) => self.interpret_call(call),
-            Expression::Struct(r#struct) => self.interpret_struct(r#struct),
-            Expression::Range(_) => todo!(),
-            Expression::Array(_) => todo!(),
-            Expression::Index(_) => todo!(),
-            Expression::IfElse(if_else) => {
-                let condition_type_id = self.resolve_expr_type(&if_else.condition, None)?;
-                let condition_type = self
-                    .type_registry
-                    .get_type_from_id(condition_type_id)
-                    .expect("Condition type not found.");
-
-                if !condition_type.is_boolean() {
-                    return Err(format!(
-                        "Unexpected type for condition {}",
-                        condition_type.ident
-                    ));
-                }
-
-                let condition_value = self.interpret_expression(*if_else.condition)?;
-
-                let if_type_id = self.resolve_expr_type(&if_else.if_expr, None)?;
-
-                if let Some(else_expr) = &if_else.else_expr {
-                    let else_type_id = self.resolve_expr_type(else_expr, None)?;
-                    if !self
-                        .type_registry
-                        .are_types_equal(if_type_id, else_type_id)?
-                    {
-                        return Err("If/Else expression return types don't match.".to_string());
-                    }
-                }
-
-                match condition_value {
-                    Value::Boolean(true) => self.interpret_expression(*if_else.if_expr),
-                    Value::Boolean(false) if matches!(if_else.else_expr, Some(_)) => {
-                        self.interpret_expression(*if_else.else_expr.unwrap())
-                    }
-                    _ => unreachable!(),
-                }
-            }
-            Expression::Match(_) => todo!(),
-            Expression::For(_) => todo!(),
-            Expression::Block(block) => self.interpret_block(block),
-            Expression::Closure(closure) => self.interpret_closure(closure),
-        }
-    }
-
     fn find_names_to_capture(&mut self, closure: &Function) -> Vec<String> {
-        let mut names_referenced = Vec::new();
+        let mut names_referenced = HashSet::new();
         let mut names_defined = closure.args.iter().cloned().collect::<HashSet<_>>();
         self.get_referenced_names_in_expr(&closure.expr, &mut names_referenced, &mut names_defined);
-        names_referenced
+        names_referenced.into_iter().collect()
     }
 
     fn get_referenced_names_in_stmt(
         &self,
         stmt: &Stmt,
-        names: &mut Vec<String>,
+        names: &mut HashSet<String>,
         defined: &mut HashSet<String>,
     ) {
         match stmt {
@@ -218,14 +154,14 @@ impl Interpreter {
     fn get_referenced_names_in_expr(
         &self,
         expr: &Expression,
-        names: &mut Vec<String>,
+        names: &mut HashSet<String>,
         defined: &mut HashSet<String>,
     ) {
         match expr {
             Expression::Literal(_) => {}
             Expression::Path(path) => {
                 if !defined.contains(path) && self.context.borrow().is_local(path) {
-                    names.push(path.clone())
+                    names.insert(path.clone());
                 }
             }
             Expression::Operation(operation) => {
