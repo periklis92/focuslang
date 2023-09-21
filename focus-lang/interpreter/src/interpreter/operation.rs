@@ -1,5 +1,5 @@
 use parser::{
-    op::{ArithmeticOperator, BooleanOperator},
+    op::{ArithmeticOperator, BooleanOperator, ComparisonOperator},
     stmt::{Expression, Operation, Operator},
 };
 
@@ -35,7 +35,14 @@ impl Interpreter {
                 }
                 ArithmeticOperator::Mod => todo!(),
             },
-            Operator::Comparison(_) => todo!(),
+            Operator::Comparison(comparison) => match comparison {
+                ComparisonOperator::Equal => Ok(Value::Boolean(lhs.are_equal(&rhs))),
+                ComparisonOperator::NotEqual => Ok(Value::Boolean(!lhs.are_equal(&rhs))),
+                ComparisonOperator::Greater => todo!(),
+                ComparisonOperator::Less => todo!(),
+                ComparisonOperator::GreaterEqual => todo!(),
+                ComparisonOperator::LessEqual => todo!(),
+            },
             Operator::Boolean(boolean) => match boolean {
                 BooleanOperator::Or => match (lhs, rhs) {
                     (Value::Boolean(false), Value::Boolean(false)) => Ok(Value::Boolean(false)),
