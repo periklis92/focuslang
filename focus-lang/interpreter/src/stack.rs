@@ -26,7 +26,7 @@ impl ValueStack {
 
     pub fn set_value(&mut self, sp: usize, value: Value) -> Option<Value> {
         let v = self.values.get_mut(sp)?;
-        *v = value;
+        v.set(value);
         Some(v.clone())
     }
 
