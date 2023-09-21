@@ -64,11 +64,9 @@ impl Interpreter {
                         return Err("Invalid number of arguments in function.".to_string());
                     }
 
-                    let expr = Expression::Block(b);
-
                     let function = Rc::new(RefCell::new(Function {
                         context: self.context.clone(),
-                        expr,
+                        expr: Expression::Block(b),
                         args,
                         captured_names: Vec::new(),
                     }));
@@ -83,7 +81,26 @@ impl Interpreter {
                     Value::Function(function)
                 }
                 Some(_) => return Err("Invalid let declaration.".to_string()),
-                None => unimplemented!("Uninitialized local"),
+                None => {
+                    let ty_expr = l.ty.ok_or(
+                        "You need to declare the type of an unitialized name.".to_string(),
+                    )?;
+
+                    let ty = self
+                        .type_registry
+                        .get_type_from_expr(&ty_expr)
+                        .ok_or("Type not found.".to_string())?;
+
+                    self.context.borrow_mut().add_local(
+                        &l.ident,
+                        Local {
+                            ty: ty.type_id,
+                            sp: None,
+                        },
+                    );
+
+                    Value::Unit
+                }
             },
             Stmt::Expr(expr) => self.interpret_expression(expr)?,
         };
