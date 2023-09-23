@@ -77,7 +77,7 @@ pub enum Expression {
     Struct(Struct),
     Range(Range),
     Array(Vec<Expression>),
-    Index(Box<Expression>),
+    Index(Index),
     IfElse(IfElse),
     Match(Match),
     For(For),
@@ -201,4 +201,10 @@ pub struct For {
 pub struct Closure {
     pub args: Vec<String>,
     pub block: Box<Expression>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Index {
+    pub value: Box<Expression>,
+    pub index: Box<Expression>,
 }

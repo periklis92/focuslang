@@ -3,8 +3,8 @@ use scanner::{Scanner, ScannerPosition, Token};
 use crate::{
     op::{ArithmeticOperator, BooleanOperator, ComparisonOperator},
     stmt::{
-        AliasItem, Call, Closure, Expression, For, IfElse, Item, ItemStmt, LetStmt, Literal, Match,
-        MatchBranch, Operation, Operator, Range, Stmt, StmtDetails, Struct, StructField,
+        AliasItem, Call, Closure, Expression, For, IfElse, Index, Item, ItemStmt, LetStmt, Literal,
+        Match, MatchBranch, Operation, Operator, Range, Stmt, StmtDetails, Struct, StructField,
         StructItem, StructItemField, Visibility,
     },
     FunctionType, ParserError, ParserErrorInfo, Type,
@@ -219,6 +219,7 @@ impl<'a> Parser<'a> {
                 match cloned.scanner.peek_indented() {
                     Some(Token::Range) => self.parse_range(),
                     Some(Token::LeftCurly) => self.parse_struct(),
+                    Some(Token::LeftSquare) => self.parse_index(),
                     Some(t) if t.is_operator() => self.parse_operation(),
                     Some(t) if t != Token::Eof => self.parse_call(),
                     _ => Ok(Expression::Path(self.parse_path()?)),
@@ -230,6 +231,17 @@ impl<'a> Parser<'a> {
                 found: self.scanner.advance_skip_empty(),
             }),
         }
+    }
+
+    fn parse_index(&mut self) -> Result<Expression, ParserErrorInfo> {
+        let path = self.parse_path()?;
+        self.expect_skip_empty(Token::LeftSquare)?;
+        let index = self.parse_operation()?.into();
+        self.expect_skip_empty(Token::RightSquare)?;
+        Ok(Expression::Index(Index {
+            value: Expression::Path(path).into(),
+            index,
+        }))
     }
 
     fn parse_struct(&mut self) -> Result<Expression, ParserErrorInfo> {
