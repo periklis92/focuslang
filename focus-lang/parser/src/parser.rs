@@ -234,14 +234,18 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_index(&mut self) -> Result<Expression, ParserErrorInfo> {
-        let path = self.parse_path()?;
-        self.expect_skip_empty(Token::LeftSquare)?;
-        let index = self.parse_operation()?.into();
-        self.expect_skip_empty(Token::RightSquare)?;
-        Ok(Expression::Index(Index {
-            value: Expression::Path(path).into(),
-            index,
-        }))
+        let mut value = Expression::Path(self.parse_path()?).into();
+        let mut index;
+        loop {
+            self.expect_skip_empty(Token::LeftSquare)?;
+            index = self.parse_operation()?.into();
+            self.expect_skip_empty(Token::RightSquare)?;
+            if !self.scanner.check_skip_empty(Token::LeftSquare) {
+                break;
+            }
+            value = Expression::Index(Index { value, index }).into();
+        }
+        Ok(Expression::Index(Index { value, index }))
     }
 
     fn parse_struct(&mut self) -> Result<Expression, ParserErrorInfo> {
