@@ -131,7 +131,7 @@ impl TypeRegistry {
         let ty = self.get_type_from_id(type_id)?;
         let ty_name = format!("array of {}", ty.ident);
         self.get_type_id_from_name(&ty_name).or_else(|| {
-            let type_id = self.types.len();
+            let arr_type_id = self.types.len();
             self.types.push(
                 Type {
                     ident: ty_name.clone(),
@@ -141,8 +141,8 @@ impl TypeRegistry {
                 }
                 .into(),
             );
-            self.type_ids.insert(ty_name, type_id);
-            Some(type_id)
+            self.type_ids.insert(ty_name, arr_type_id);
+            Some(arr_type_id)
         })
     }
 
