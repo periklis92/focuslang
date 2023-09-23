@@ -18,7 +18,6 @@ use std::{cell::RefCell, collections::HashSet, rc::Rc};
 use crate::context::Context;
 use crate::object::Value;
 use crate::object::ValueRef;
-use crate::r#type::PrimitiveType;
 use crate::r#type::TypeRegistry;
 use crate::stack::ValueStack;
 use parser::{
@@ -186,7 +185,7 @@ impl Interpreter {
                 }
             }
             Expression::Index(index) => {
-                self.get_referenced_names_in_expr(&index, names, defined);
+                self.get_referenced_names_in_expr(&index.index, names, defined);
             }
             Expression::IfElse(if_else) => {
                 self.get_referenced_names_in_expr(&if_else.condition, names, defined);

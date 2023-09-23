@@ -1,4 +1,6 @@
-use parser::stmt::{Expression, Literal, Stmt};
+use std::collections::HashSet;
+
+use parser::stmt::{Expression, Literal, Operator, Stmt};
 
 use crate::{
     object::ValueRef,
@@ -46,8 +48,8 @@ impl Interpreter {
                     return Err("Not matching types in operation.".to_string());
                 }
                 match operation.op {
-                    parser::stmt::Operator::Arithmetic(_) => lhs_type_id,
-                    parser::stmt::Operator::Comparison(_) => {
+                    Operator::Arithmetic(_) => lhs_type_id,
+                    Operator::Comparison(_) => {
                         if !self
                             .type_registry
                             .are_types_equal(lhs_type_id, PrimitiveType::Boolean.type_id())?
@@ -57,7 +59,7 @@ impl Interpreter {
                             PrimitiveType::Boolean.type_id()
                         }
                     }
-                    parser::stmt::Operator::Boolean(_) => {
+                    Operator::Boolean(_) => {
                         if !self
                             .type_registry
                             .are_types_equal(lhs_type_id, PrimitiveType::Boolean.type_id())?
@@ -67,8 +69,8 @@ impl Interpreter {
                             PrimitiveType::Boolean.type_id()
                         }
                     }
-                    parser::stmt::Operator::Assignment => PrimitiveType::Unit.type_id(),
-                    parser::stmt::Operator::CompoundAssignment(_) => lhs_type_id,
+                    Operator::Assignment => PrimitiveType::Unit.type_id(),
+                    Operator::CompoundAssignment(_) => lhs_type_id,
                 }
             }
             Expression::Call(call) => {
@@ -95,7 +97,23 @@ impl Interpreter {
                 .get_struct_type_id_from_name(&struc.path)
                 .ok_or(format!("Unknown type {} or not a struct.", struc.path))?,
             Expression::Range(_) => todo!(),
-            Expression::Array(_) => todo!(),
+            Expression::Array(arr) => {
+                if arr.is_empty() {
+                    return Err("Unable to resolve type of array because it's empty.".to_string());
+                }
+                let types_found = arr
+                    .iter()
+                    .map(|el| self.resolve_expr_type(el, None))
+                    .collect::<Result<HashSet<_>, _>>()?;
+
+                if types_found.len() == 1 {
+                    self.type_registry
+                        .insert_or_get_array_type_for_type(*types_found.iter().next().unwrap())
+                        .unwrap()
+                } else {
+                    return Err("Mismatched types in array.".to_string());
+                }
+            }
             Expression::Index(_) => todo!(),
             Expression::IfElse(if_else) => {
                 let if_type_id = self.resolve_expr_type(&if_else.if_expr, expected_type)?;

@@ -1,8 +1,10 @@
+use std::{cell::RefCell, rc::Rc};
+
 use parser::stmt::Expression;
 
 use crate::{
-    object::{Value, ValueRef},
-    r#type::PrimitiveType,
+    object::{Object, Value, ValueRef},
+    r#type::{PrimitiveType, Type, TypeLayout},
     Interpreter,
 };
 
@@ -28,8 +30,51 @@ impl Interpreter {
             Expression::Call(call) => self.interpret_call(call),
             Expression::Struct(r#struct) => self.interpret_struct(r#struct),
             Expression::Range(_) => todo!(),
-            Expression::Array(_) => todo!(),
-            Expression::Index(_) => todo!(),
+            Expression::Array(arr) => {
+                let type_id = self.resolve_expr_type(&arr[0], None)?;
+                let arr_type_id = self
+                    .type_registry
+                    .insert_or_get_array_type_for_type(type_id)
+                    .unwrap();
+                let values = arr
+                    .into_iter()
+                    .map(|el| self.interpret_expression(el))
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(Value::Object(Rc::new(RefCell::new(Object {
+                    values,
+                    type_id: arr_type_id,
+                }))))
+            }
+            Expression::Index(index) => {
+                let value = self.interpret_expression(*index.index)?;
+                let i = match value {
+                    Value::Integer(i) => i,
+                    _ => return Err("Unexpected value for indexing operation.".to_string()),
+                };
+                let value = self.interpret_expression(*index.value)?;
+                match value {
+                    Value::Object(object) => {
+                        let ty = self
+                            .type_registry
+                            .get_type_from_id(object.borrow().type_id)
+                            .unwrap();
+
+                        let Type {
+                            layout: TypeLayout::Array(_),
+                            ..
+                        } = *ty
+                        else {
+                            return Err("You can only index arrays currently.".to_string());
+                        };
+
+                        object
+                            .borrow()
+                            .get_value(i as usize)
+                            .ok_or("Index out of range.".to_string())
+                    }
+                    _ => Err("Value cannot be indexed.".to_string()),
+                }
+            }
             Expression::IfElse(if_else) => {
                 let condition_type_id = self.resolve_expr_type(&if_else.condition, None)?;
                 let condition_type = self
