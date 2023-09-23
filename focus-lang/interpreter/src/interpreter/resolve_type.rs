@@ -114,7 +114,19 @@ impl Interpreter {
                     return Err("Mismatched types in array.".to_string());
                 }
             }
-            Expression::Index(_) => todo!(),
+            Expression::Index(index) => {
+                let arr_type_id = self.resolve_expr_type(&index.value, expected_type)?;
+                let ty = self.type_registry.get_type_from_id(arr_type_id).unwrap();
+                let Type {
+                    layout: TypeLayout::Array(el_type_id),
+                    ..
+                } = *ty
+                else {
+                    return Err("Trying to index non array type.".to_string());
+                };
+
+                el_type_id
+            }
             Expression::IfElse(if_else) => {
                 let if_type_id = self.resolve_expr_type(&if_else.if_expr, expected_type)?;
 
