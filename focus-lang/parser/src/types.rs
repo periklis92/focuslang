@@ -2,6 +2,7 @@
 pub enum Type {
     Unit,
     Name(String),
+    Array(Box<Type>),
     Function(FunctionType),
 }
 

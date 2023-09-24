@@ -96,6 +96,10 @@ impl<'a> Parser<'a> {
             Ok(Type::Name(self.scanner.slice().to_string()))
         } else if self.scanner.check_and_consume_indented(Token::Unit) {
             Ok(Type::Unit)
+        } else if self.scanner.check_and_consume_indented(Token::LeftSquare) {
+            let ty = Type::Array(self.parse_type()?.into());
+            self.expect_skip_empty(Token::RightSquare)?;
+            Ok(ty)
         } else if self.scanner.check_and_consume_indented(Token::LeftParen) {
             let mut args = Vec::new();
             let ret;
@@ -221,7 +225,7 @@ impl<'a> Parser<'a> {
                     Some(Token::LeftCurly) => self.parse_struct(),
                     Some(Token::LeftSquare) => self.parse_index(),
                     Some(t) if t.is_operator() => self.parse_operation(),
-                    Some(t) if t != Token::Eof => self.parse_call(),
+                    Some(t) if t.is_primary() => self.parse_call(),
                     _ => Ok(Expression::Path(self.parse_path()?)),
                 }
             }
@@ -483,6 +487,7 @@ impl<'a> Parser<'a> {
                 self.scanner.advance_skip_empty();
                 let mut exprs = Vec::new();
                 loop {
+                    self.skip_empty_lines();
                     let expr = match self.scanner.peek_ignore() {
                         Token::Eof => return Err(ParserErrorInfo::EarlyEof),
                         Token::RightSquare => break,
@@ -849,6 +854,19 @@ mod tests {
     #[test]
     fn parse_struct() {
         let mut parser = Parser::new(r#"let line = Line{a:a,b:b}"#, None);
+        println!("{:?}", parser.parse());
+    }
+
+    #[test]
+    fn parse_md_array() {
+        let mut parser = Parser::new(
+            r#"
+        let a: [[int]] = [
+            [i, 2, 3]
+        ]
+        "#,
+            None,
+        );
         println!("{:?}", parser.parse());
     }
 }
