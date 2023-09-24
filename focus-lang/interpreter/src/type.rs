@@ -32,6 +32,11 @@ impl TypeRegistry {
         match ty {
             parser::Type::Unit => self.get_type_from_id(0),
             parser::Type::Name(name) => self.get_type_from_name(&name),
+            parser::Type::Array(array) => {
+                let ty = self.get_type_from_expr(array)?;
+                let type_id = self.insert_or_get_array_type_for_type(ty.type_id)?;
+                self.get_type_from_id(type_id)
+            }
             parser::Type::Function(function) => {
                 let mut args = function
                     .args
@@ -135,7 +140,7 @@ impl TypeRegistry {
             self.types.push(
                 Type {
                     ident: ty_name.clone(),
-                    type_id,
+                    type_id: arr_type_id,
                     layout: TypeLayout::Array(type_id),
                     visibility: Visibility::Public,
                 }
