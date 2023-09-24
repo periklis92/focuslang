@@ -20,9 +20,24 @@ impl Interpreter {
                         && !matches!(l.ty, Some(parser::Type::Function(_))) =>
                 {
                     if b.len() > 0 {
+                        let expr_type =
+                            l.ty.map(|t| self.type_registry.get_type_from_expr(&t))
+                                .flatten();
                         let stmt = b.swap_remove(0);
                         let ty = self.resolve_stmt_type(&stmt, None)?;
-                        let value = self.interpret_stmt(stmt)?;
+                        let value = match &stmt {
+                            Stmt::Expr(Expression::Array(v)) if v.is_empty() => {
+                                todo!("Create empty array.")
+                            }
+                            _ => self.interpret_stmt(stmt)?,
+                        };
+                        if expr_type.is_some()
+                            && !self
+                                .type_registry
+                                .are_types_equal(ty, expr_type.unwrap().type_id)?
+                        {
+                            return Err("Declared type doesn't match the value.".to_string());
+                        }
                         let sp = self.stack.push_value(value.clone());
                         self.context
                             .borrow_mut()
