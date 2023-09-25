@@ -13,9 +13,11 @@ mod tests;
 #[cfg(target_arch = "wasm32")]
 mod wasm;
 
+use std::collections::HashMap;
 use std::{cell::RefCell, collections::HashSet, rc::Rc};
 
 use crate::context::Context;
+use crate::module::Module;
 use crate::object::Value;
 use crate::object::ValueRef;
 use crate::r#type::TypeRegistry;
@@ -45,15 +47,18 @@ pub struct Interpreter {
     stack: ValueStack,
     context: Rc<RefCell<Context>>,
     type_registry: TypeRegistry,
+    modules: HashMap<String, Rc<Module>>,
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl Interpreter {
     pub fn new() -> Self {
+        let module = Rc::new(Module::new("Main"));
         Interpreter {
             stack: Default::default(),
-            context: Default::default(),
+            context: Rc::new(RefCell::new(Context::new(module.clone()))),
             type_registry: TypeRegistry::new(),
+            modules: HashMap::from([("Main".to_string(), module)]),
         }
     }
 }

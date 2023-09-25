@@ -81,9 +81,11 @@ impl Interpreter {
             }
             _ => return Err("Expected a function or closure for call.".to_string()),
         };
-        let inner_context = Rc::new(RefCell::new(Context::new().with_parent(parent_context)));
-        let previous_context = std::mem::take(&mut self.context);
-        self.context = inner_context;
+        let parent_module = parent_context.borrow().module();
+        let inner_context = Rc::new(RefCell::new(
+            Context::new(parent_module).with_parent(parent_context),
+        ));
+        let previous_context = std::mem::replace(&mut self.context, inner_context);
 
         let resolved_ret_type = self.resolve_expr_type(&expr, Some(*ret_type))?;
         self.type_registry

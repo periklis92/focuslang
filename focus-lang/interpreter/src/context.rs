@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use crate::r#type::TypeId;
+use crate::{module::Module, r#type::TypeId};
 
 #[derive(Clone, Debug)]
 pub struct Local {
@@ -8,17 +8,19 @@ pub struct Local {
     pub sp: Option<usize>,
 }
 
-#[derive(Default, Clone, Debug)]
+#[derive(Clone)]
 pub struct Context {
     locals: HashMap<String, Local>,
     parent: Option<Rc<RefCell<Context>>>,
+    module: Rc<Module>,
 }
 
 impl Context {
-    pub fn new() -> Self {
+    pub fn new(module: Rc<Module>) -> Self {
         Self {
             locals: HashMap::default(),
             parent: None,
+            module,
         }
     }
 
@@ -33,6 +35,10 @@ impl Context {
 
     pub fn parent(&self) -> Option<Rc<RefCell<Context>>> {
         self.parent.clone()
+    }
+
+    pub fn module(&self) -> Rc<Module> {
+        self.module.clone()
     }
 
     pub fn add_local(&mut self, ident: &str, local: Local) {
